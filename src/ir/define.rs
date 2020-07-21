@@ -161,6 +161,7 @@ fn argument(i: &str) -> IResult<&str, Argument> {
         map(super::bitcast, drop),
         map(super::getelementptr, drop),
         map(super::local, drop),
+        map(super::global, drop),
         map(digit1, drop),
     ))(i)?
     .0;
@@ -519,6 +520,25 @@ mod tests {
                 "",
                 Stmt::IndirectCall(FnSig {
                     inputs: vec![Type::Integer(32)],
+                    output: None,
+                })
+            ))
+        );
+
+        assert_eq!(
+            super::indirect_call(
+                "call void %19({}* nonnull %20, void ({}*)* nonnull @_ZN4core3ops8function6FnOnce9call_once17h20ec4541710580b3E) #15"
+            ),
+            Ok((
+                "",
+                Stmt::IndirectCall(FnSig {
+                    inputs: vec![
+                        Type::Pointer(Box::new(Type::Struct(vec![]))),
+                        Type::Pointer(Box::new(Type::Fn(FnSig {
+                            inputs: vec![Type::Pointer(Box::new(Type::Struct(vec![])))],
+                            output: None
+                        }))),
+                    ],
                     output: None,
                 })
             ))
