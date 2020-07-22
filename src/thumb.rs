@@ -544,6 +544,25 @@ pub fn analyze(
                 imm32 += 2 * i + 4;
 
                 bls.push(imm32);
+            } else if v7
+                && matches(first, "0b11111_00_0_0_10_0_xxxx")
+                && matches(second, "0bxxxx_1_xx1_xxxxxxxx")
+            {
+                // A7.7.?        STR (immediate) - T4
+                let rn = first[0] & 0b1111;
+                let imm8 = second[0];
+                if rn != SP || imm8 == 0 {
+                    continue;
+                }
+
+                modifies_sp = true;
+
+                let add = (second[1] & (1 << 1)) == 1 << 1;
+                if !add {
+                    if let Some(stack) = stack.as_mut() {
+                        *stack += u64::from(imm8);
+                    }
+                }
             } else {
                 // some other 32-bit instruction
                 continue;
@@ -654,6 +673,11 @@ mod tests {
         let push = super::analyze(&[0x80, 0xb5], 0, false, &[]);
         assert!(push.3);
         assert_eq!(push.4, Some(8));
+
+        // f84d 8d04       push    r8
+        let push_t4 = super::analyze(&[0x4d, 0xf8, 0x04, 0x8d], 0, true, &[]);
+        assert!(push_t4.3);
+        assert_eq!(push_t4.4, Some(4));
 
         // e92d 41f0       stmdb   sp!, {r4, r5, r6, r7, r8, lr}
         let stmdb = super::analyze(&[0x2d, 0xe9, 0xf0, 0x41], 0, true, &[]);
